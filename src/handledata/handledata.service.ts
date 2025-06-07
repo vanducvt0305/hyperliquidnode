@@ -88,7 +88,7 @@ export class HandledataService implements OnModuleInit {
     const watcher = chokidar.watch(this.watchDir, {
       persistent: true,
       ignoreInitial: false,
-      depth: undefined,
+      depth: Infinity,
       awaitWriteFinish: {
         stabilityThreshold: 200,
         pollInterval: 100,
@@ -101,8 +101,15 @@ export class HandledataService implements OnModuleInit {
   }
 
   private startTailingFile(filePath: string) {
-    if (this.activeTails.has(filePath) || fs.statSync(filePath).isDirectory())
+    if (this.activeTails.has(filePath)) return;
+
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) return;
+    } catch (err) {
+      console.error(`❌ Không thể đọc file: ${filePath}`, err.message);
       return;
+    }
 
     console.log(`📄 Bắt đầu theo dõi: ${filePath}`);
 
@@ -110,9 +117,10 @@ export class HandledataService implements OnModuleInit {
       beginAt: 'end',
       onMove: 'follow',
       detectTruncate: true,
+      encoding: 'utf8',
     });
 
-    tail.on('data', (chunk: Buffer) => {
+    tail.on('data', (chunk: Buffer | string) => {
       const lines = chunk
         .toString()
         .split('\n')
@@ -120,24 +128,22 @@ export class HandledataService implements OnModuleInit {
 
       for (const line of lines) {
         try {
-          const obj = JSON.parse(line);
+          const json = JSON.parse(line);
 
-          if (this.containsLiquid(obj)) {
+          if (this.containsLiquid(json)) {
             console.log(
-              `🔍 Tìm thấy dữ liệu chứa "liquid":`,
-              JSON.stringify(obj, null, 2),
+              `🔍 Phát hiện dữ liệu chứa "liquid":`,
+              JSON.stringify(json, null, 2),
             );
-            // TODO: Xử lý thêm hoặc emit sự kiện đi nơi khác nếu cần
           }
-        } catch (e) {
-          // Không parse được JSON, bỏ qua hoặc log tùy bạn
-          // console.warn('Không parse được JSON:', line);
+        } catch (err) {
+          console.warn(`⚠️ Không parse được JSON từ dòng: ${line}`);
         }
       }
     });
 
     tail.on('error', (err) => {
-      console.error(`❌ Lỗi khi tail ${filePath}:`, err.message);
+      console.error(`❌ Lỗi tail ${filePath}:`, err.message);
     });
 
     this.activeTails.set(filePath, tail);
@@ -146,23 +152,29 @@ export class HandledataService implements OnModuleInit {
   private stopTailingFile(filePath: string) {
     const tail = this.activeTails.get(filePath);
     if (tail) {
-      console.log(`🛑 Dừng tail: ${filePath}`);
+      console.log(`🛑 Dừng theo dõi: ${filePath}`);
       tail.destroy();
       this.activeTails.delete(filePath);
     }
   }
 
-  // Hàm đệ quy kiểm tra key hoặc value có chứa "liquid" (không phân biệt hoa thường)
+  // Đệ quy tìm "liquid" trong key hoặc value
   private containsLiquid(data: any): boolean {
     if (typeof data === 'string') {
       return data.toLowerCase().includes('liquid');
-    } else if (typeof data === 'object' && data !== null) {
-      return Object.entries(data).some(([key, value]) => {
-        return (
-          key.toLowerCase().includes('liquid') || this.containsLiquid(value)
-        );
-      });
     }
+
+    if (typeof data === 'object' && data !== null) {
+      for (const [key, value] of Object.entries(data)) {
+        if (
+          key.toLowerCase().includes('liquid') ||
+          this.containsLiquid(value)
+        ) {
+          return true;
+        }
+      }
+    }
+
     return false;
   }
 }
