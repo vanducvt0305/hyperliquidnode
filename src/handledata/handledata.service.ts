@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
-export class FileWatcherService implements OnModuleInit {
+export class HandledataService implements OnModuleInit {
   private readonly watchDir = '/root/hl/data/replica_cmds';
   private readonly activeTails: Map<string, TailStream> = new Map();
 
