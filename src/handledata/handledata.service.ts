@@ -49,7 +49,7 @@ export class HandledataService implements OnModuleInit {
         .split('\n')
         .filter((line) => line.trim() !== '');
       lines.forEach((line) => {
-        // console.log(`📝 Dòng mới từ ${path.basename(filePath)}:`);
+        console.log(line);
         // TODO: Gửi đi nơi khác, xử lý logic, emit WebSocket...
       });
     });
