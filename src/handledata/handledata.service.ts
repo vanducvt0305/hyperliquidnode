@@ -1,28 +1,73 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as chokidar from 'chokidar';
+import * as TailStream from 'tail-stream';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
-export class HandledataService implements OnModuleInit {
-  private watcher: chokidar.FSWatcher;
+export class FileWatcherService implements OnModuleInit {
+  private readonly watchDir = '/root/hl/data/replica_cmds';
+  private readonly activeTails: Map<string, TailStream> = new Map();
 
   onModuleInit() {
-    this.watcher = chokidar.watch('/root/hl/data/replica_cmds', {
+    console.log(`👀 Đang theo dõi thư mục: ${this.watchDir}`);
+
+    // Theo dõi toàn bộ file trong thư mục (đệ quy)
+    const watcher = chokidar.watch(this.watchDir, {
       persistent: true,
-      ignoreInitial: true, // Không xử lý file có sẵn
+      ignoreInitial: false,
+      depth: undefined,
       awaitWriteFinish: {
-        stabilityThreshold: 100, // giảm thấp để phản ứng nhanh hơn
-        pollInterval: 50,
+        stabilityThreshold: 200,
+        pollInterval: 100,
       },
-      depth: undefined, // theo dõi đệ quy không giới hạn
     });
 
-    this.watcher.on('change', (filePath: string) => {
-      console.log(`🟡 File Changed: ${filePath}`);
+    watcher
+      .on('add', this.startTailingFile.bind(this))
+      .on('change', (path) => {
+        // Không cần làm gì ở đây vì tail-stream đã theo dõi rồi
+      })
+      .on('unlink', this.stopTailingFile.bind(this));
+  }
 
-      // TODO: Đẩy sang pipeline xử lý tiếp
-      // Ví dụ: Gửi path vào queue, stream xử lý, hoặc xử lý theo tail
+  private startTailingFile(filePath: string) {
+    if (this.activeTails.has(filePath) || fs.statSync(filePath).isDirectory())
+      return;
 
-      // Giả sử gọi hàm xử lý stream ở đây
+    console.log(`📄 Bắt đầu theo dõi: ${filePath}`);
+
+    const tail = TailStream.createReadStream(filePath, {
+      beginAt: 'end', // Bắt đầu từ phần mới ghi
+      onMove: 'follow', // Nếu file bị move/rename vẫn tiếp tục tail
+      detectTruncate: true,
     });
+
+    tail.on('data', (chunk: Buffer) => {
+      const lines = chunk
+        .toString()
+        .split('\n')
+        .filter((line) => line.trim() !== '');
+      lines.forEach((line) => {
+        console.log(`📝 Dòng mới từ ${path.basename(filePath)}:`, line);
+
+        // TODO: Gửi đi nơi khác, xử lý logic, emit WebSocket...
+      });
+    });
+
+    tail.on('error', (err) => {
+      console.error(`❌ Lỗi khi tail ${filePath}:`, err.message);
+    });
+
+    this.activeTails.set(filePath, tail);
+  }
+
+  private stopTailingFile(filePath: string) {
+    const tail = this.activeTails.get(filePath);
+    if (tail) {
+      console.log(`🛑 Dừng tail: ${filePath}`);
+      tail.destroy();
+      this.activeTails.delete(filePath);
+    }
   }
 }
