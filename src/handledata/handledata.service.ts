@@ -120,24 +120,27 @@ export class HandledataService implements OnModuleInit {
       encoding: 'utf8',
     });
 
-    tail.on('data', (chunk: Buffer | string) => {
+    tail.on('data', (chunk: Buffer) => {
       const lines = chunk
         .toString()
         .split('\n')
         .filter((line) => line.trim() !== '');
 
       for (const line of lines) {
-        try {
-          const json = JSON.parse(line);
+        // Nếu không chứa "liquid", bỏ qua sớm (tối ưu hiệu suất)
+        if (!line.toLowerCase().includes('liquid')) continue;
 
-          if (this.containsLiquid(json)) {
+        try {
+          const obj = JSON.parse(line);
+          if (this.containsLiquid(obj)) {
             console.log(
-              `🔍 Phát hiện dữ liệu chứa "liquid":`,
-              JSON.stringify(json, null, 2),
+              `🔍 Tìm thấy dữ liệu chứa "liquid":`,
+              JSON.stringify(obj, null, 2),
             );
           }
-        } catch (err) {
-          console.warn(`⚠️ Không parse được JSON từ dòng: ${line}`);
+        } catch (e) {
+          // JSON không hợp lệ, nhưng có thể vẫn cần log dòng chứa "liquid"
+          console.warn('⚠️ Không parse được JSON từ dòng chứa "liquid":');
         }
       }
     });
