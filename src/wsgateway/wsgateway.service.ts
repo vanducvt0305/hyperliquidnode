@@ -11,7 +11,9 @@ import { Server, Socket } from 'socket.io';
     origin: '*', // ⚠️ có thể thay bằng IP/backend cụ thể nếu cần bảo mật hơn
   },
 })
-export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class WsGatewayService
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
