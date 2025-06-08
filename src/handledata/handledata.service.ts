@@ -2,9 +2,11 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as chokidar from 'chokidar';
 import * as TailStream from 'tail-stream';
 import * as fs from 'fs';
+import { WsGateway } from 'src/wsgateway/wsgateway.service';
 
 @Injectable()
 export class HandledataService implements OnModuleInit {
+  constructor(private readonly wsGateway: WsGateway) {}
   private readonly watchDir = '/root/hl/data/replica_cmds';
   private readonly activeTails: Map<string, TailStream> = new Map();
   private buffers: Map<string, string> = new Map(); // Lưu buffer dư cho mỗi file
@@ -57,7 +59,8 @@ export class HandledataService implements OnModuleInit {
           const json = JSON.parse(trimmed);
           // Xử lý json ở đây
           console.log('📥 JSON nhận được:', json);
-          console.log(json.abci_block.signed_action_bundles);
+          // console.log(json.abci_block.signed_action_bundles);
+          this.wsGateway.broadcastBlock(json);
           // TODO: Gửi đi nơi khác, emit websocket, ...
         } catch (err) {
           console.warn(`⚠️ Dữ liệu không phải JSON hợp lệ: ${trimmed}`);
