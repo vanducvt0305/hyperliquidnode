@@ -58,10 +58,9 @@ export class HandledataService implements OnModuleInit {
         try {
           const json = JSON.parse(trimmed);
           // Xử lý json ở đây
-          console.log('📥 JSON nhận được:', json);
+          // console.log('📥 JSON nhận được:', json);
           // console.log(json.abci_block.signed_action_bundles);
           this.wsGatewayService.broadcastBlock(json);
-          // TODO: Gửi đi nơi khác, emit websocket, ...
         } catch (err) {
           console.warn(`⚠️ Dữ liệu không phải JSON hợp lệ: ${trimmed}`);
         }
