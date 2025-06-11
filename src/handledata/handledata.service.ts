@@ -7,7 +7,7 @@ import { WsGatewayService } from 'src/wsgateway/wsgateway.service';
 @Injectable()
 export class HandledataService implements OnModuleInit {
   constructor(private readonly wsGatewayService: WsGatewayService) {}
-  private readonly watchDir = '/root/hl/data/replica_cmds';
+  private readonly watchDir = '/root/hl/data/misc_events/hourly';
   private readonly activeTails: Map<string, TailStream> = new Map();
   private buffers: Map<string, string> = new Map(); // Lưu buffer dư cho mỗi file
 
@@ -46,6 +46,7 @@ export class HandledataService implements OnModuleInit {
     tail.on('data', (chunk: Buffer) => {
       let buffer = this.buffers.get(filePath) || '';
       buffer += chunk.toString();
+      console.log('Bắt đầu nhận dữ liệu!');
 
       const lines = buffer.split('\n');
       // Lấy phần cuối chưa hoàn chỉnh lại vào buffer
