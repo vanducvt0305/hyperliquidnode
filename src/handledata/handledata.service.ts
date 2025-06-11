@@ -7,7 +7,7 @@ import { WsGatewayService } from 'src/wsgateway/wsgateway.service';
 @Injectable()
 export class HandledataService implements OnModuleInit {
   constructor(private readonly wsGatewayService: WsGatewayService) {}
-  private readonly watchDir = '/root/hl/data/misc_events/hourly';
+  private readonly watchDir = '/root/hl/data/replica_cmds';
   private readonly activeTails: Map<string, TailStream> = new Map();
   private buffers: Map<string, string> = new Map(); // Lưu buffer dư cho mỗi file
 
